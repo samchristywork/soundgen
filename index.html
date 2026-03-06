@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sound Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f0f13;
+      color: #e0e0e8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .panel {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 12px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 540px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #9090c0;
+      margin-bottom: 1.75rem;
+    }
+
+    .section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #5858a0;
+      margin-bottom: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .section-label:first-of-type { margin-top: 0; }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem 1.5rem;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #a0a0c8;
+    }
+
+    .value-display {
+      font-size: 0.75rem;
+      font-family: 'Courier New', monospace;
+      color: #6868c0;
+      min-width: 3.5rem;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: #2a2a40;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #6060e0;
+      border: 2px solid #9090ff;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.15s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #8080ff;
+      transform: scale(1.2);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #6060e0;
+      border: 2px solid #9090ff;
+      cursor: pointer;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #2a2a3a;
+      margin: 1.75rem 0 1.5rem;
+    }
+
+    .waveform-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .wave-btn {
+      flex: 1;
+      padding: 0.4rem 0;
+      background: #12121c;
+      border: 1px solid #2a2a3a;
+      border-radius: 6px;
+      color: #6868a8;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .wave-btn:hover { background: #1e1e30; color: #a0a0d8; }
+
+    .wave-btn.active {
+      background: #20204a;
+      border-color: #6060e0;
+      color: #c0c0ff;
+    }
+
+    #play-btn {
+      width: 100%;
+      margin-top: 1.75rem;
+      padding: 0.9rem;
+      background: #3030a0;
+      border: 1px solid #5050d0;
+      border-radius: 8px;
+      color: #d0d0ff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    #play-btn:hover { background: #4040c0; }
+    #play-btn:active { transform: scale(0.98); }
+
+    /* ADSR envelope visualisation */
+    .envelope-canvas {
+      width: 100%;
+      height: 80px;
+      display: block;
+      margin-top: 1.5rem;
+      border-radius: 6px;
+      background: #0d0d18;
+      border: 1px solid #22223a;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Sound Generator</h1>
+
+    <div class="section-label">Waveform</div>
+    <div class="waveform-row">
+      <button class="wave-btn active" data-wave="sine">Sine</button>
+      <button class="wave-btn" data-wave="square">Square</button>
+      <button class="wave-btn" data-wave="sawtooth">Saw</button>
+      <button class="wave-btn" data-wave="triangle">Triangle</button>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section-label">Oscillator</div>
+    <div class="controls-grid">
+      <div class="control">
+        <div class="control-header">
+          <label for="freq">Frequency</label>
+          <span class="value-display" id="freq-val">440 Hz</span>
+        </div>
+        <input type="range" id="freq" min="80" max="2000" step="1" value="440">
+      </div>
+      <div class="control">
+        <div class="control-header">
+          <label for="detune">Detune</label>
+          <span class="value-display" id="detune-val">0 ct</span>
+        </div>
+        <input type="range" id="detune" min="-100" max="100" step="1" value="0">
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section-label">ADSR Envelope</div>
+    <div class="controls-grid">
+      <div class="control">
+        <div class="control-header">
+          <label for="attack">Attack</label>
+          <span class="value-display" id="attack-val">0.01 s</span>
+        </div>
+        <input type="range" id="attack" min="0.001" max="2" step="0.001" value="0.01">
+      </div>
+      <div class="control">
+        <div class="control-header">
+          <label for="decay">Decay</label>
+          <span class="value-display" id="decay-val">0.10 s</span>
+        </div>
+        <input type="range" id="decay" min="0.001" max="2" step="0.001" value="0.1">
+      </div>
+      <div class="control">
+        <div class="control-header">
+          <label for="sustain">Sustain</label>
+          <span class="value-display" id="sustain-val">0.70</span>
+        </div>
+        <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.7">
+      </div>
+      <div class="control">
+        <div class="control-header">
+          <label for="release">Release</label>
+          <span class="value-display" id="release-val">0.30 s</span>
+        </div>
+        <input type="range" id="release" min="0.001" max="4" step="0.001" value="0.3">
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section-label">Output</div>
+    <div class="controls-grid">
+      <div class="control">
+        <div class="control-header">
+          <label for="gain">Volume</label>
+          <span class="value-display" id="gain-val">0.80</span>
+        </div>
+        <input type="range" id="gain" min="0" max="1" step="0.01" value="0.8">
+      </div>
+      <div class="control">
+        <div class="control-header">
+          <label for="duration">Hold</label>
+          <span class="value-display" id="duration-val">0.50 s</span>
+        </div>
+        <input type="range" id="duration" min="0.05" max="4" step="0.05" value="0.5">
+      </div>
+    </div>
+
+    <canvas class="envelope-canvas" id="envelope-canvas"></canvas>
+
+    <button id="play-btn">&#9654; Play Sound</button>
+  </div>
+
+  <script>
+    // --- Value display sync ---
+    const fmt = {
+      freq:     v => `${v} Hz`,
+      detune:   v => `${v} ct`,
+      attack:   v => `${parseFloat(v).toFixed(2)} s`,
+      decay:    v => `${parseFloat(v).toFixed(2)} s`,
+      sustain:  v => parseFloat(v).toFixed(2),
+      release:  v => `${parseFloat(v).toFixed(2)} s`,
+      gain:     v => parseFloat(v).toFixed(2),
+      duration: v => `${parseFloat(v).toFixed(2)} s`,
+    };
+
+    Object.keys(fmt).forEach(id => {
+      const slider = document.getElementById(id);
+      const display = document.getElementById(`${id}-val`);
+      const update = () => { display.textContent = fmt[id](slider.value); drawEnvelope(); };
+      slider.addEventListener('input', update);
+    });
+
+    // --- Waveform selector ---
+    let waveform = 'sine';
+    document.querySelectorAll('.wave-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.wave-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        waveform = btn.dataset.wave;
+      });
+    });
+
+    // --- Envelope canvas ---
+    const canvas = document.getElementById('envelope-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function drawEnvelope() {
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.clientWidth;
+      const H = canvas.clientHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.scale(dpr, dpr);
+
+      const attack  = parseFloat(document.getElementById('attack').value);
+      const decay   = parseFloat(document.getElementById('decay').value);
+      const sustain = parseFloat(document.getElementById('sustain').value);
+      const release = parseFloat(document.getElementById('release').value);
+      const hold    = parseFloat(document.getElementById('duration').value);
+
+      const totalTime = attack + decay + hold + release;
+      const pad = { top: 8, bottom: 8, left: 8, right: 8 };
+      const w = W - pad.left - pad.right;
+      const h = H - pad.top - pad.bottom;
+
+      const tx = t => pad.left + (t / totalTime) * w;
+      const ty = amp => pad.top + (1 - amp) * h;
+
+      const tA = attack;
+      const tD = tA + decay;
+      const tH = tD + hold;
+      const tR = tH + release;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Fill
+      ctx.beginPath();
+      ctx.moveTo(tx(0), ty(0));
+      ctx.lineTo(tx(tA), ty(1));
+      ctx.lineTo(tx(tD), ty(sustain));
+      ctx.lineTo(tx(tH), ty(sustain));
+      ctx.lineTo(tx(tR), ty(0));
+      ctx.lineTo(tx(tR), ty(0));
+      ctx.lineTo(tx(0), ty(0));
+
+      const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+      grad.addColorStop(0, 'rgba(96,96,224,0.35)');
+      grad.addColorStop(1, 'rgba(96,96,224,0.04)');
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Stroke
+      ctx.beginPath();
+      ctx.moveTo(tx(0), ty(0));
+      ctx.lineTo(tx(tA), ty(1));
+      ctx.lineTo(tx(tD), ty(sustain));
+      ctx.lineTo(tx(tH), ty(sustain));
+      ctx.lineTo(tx(tR), ty(0));
+      ctx.strokeStyle = '#6060e0';
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+
+      // Phase labels
+      const labels = [
+        { t: tA / 2,        label: 'A' },
+        { t: (tA + tD) / 2, label: 'D' },
+        { t: (tD + tH) / 2, label: 'S' },
+        { t: (tH + tR) / 2, label: 'R' },
+      ];
+      ctx.fillStyle = '#4848a0';
+      ctx.font = `bold 9px 'Courier New', monospace`;
+      ctx.textAlign = 'center';
+      labels.forEach(({ t, label }) => {
+        ctx.fillText(label, tx(t), H - pad.bottom - 2);
+      });
+    }
+
+    drawEnvelope();
+    window.addEventListener('resize', drawEnvelope);
+
+    // --- Audio playback ---
+    let audioCtx = null;
+
+    document.getElementById('play-btn').addEventListener('click', () => {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+
+      const attack  = parseFloat(document.getElementById('attack').value);
+      const decay   = parseFloat(document.getElementById('decay').value);
+      const sustain = parseFloat(document.getElementById('sustain').value);
+      const release = parseFloat(document.getElementById('release').value);
+      const hold    = parseFloat(document.getElementById('duration').value);
+      const freq    = parseFloat(document.getElementById('freq').value);
+      const detune  = parseFloat(document.getElementById('detune').value);
+      const volume  = parseFloat(document.getElementById('gain').value);
+
+      // Oscillator
+      const osc = audioCtx.createOscillator();
+      osc.type = waveform;
+      osc.frequency.value = freq;
+      osc.detune.value = detune;
+
+      // Gain (envelope)
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(volume, now + attack);
+      gainNode.gain.linearRampToValueAtTime(volume * sustain, now + attack + decay);
+      gainNode.gain.setValueAtTime(volume * sustain, now + attack + decay + hold);
+      gainNode.gain.linearRampToValueAtTime(0, now + attack + decay + hold + release);
+
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + attack + decay + hold + release + 0.01);
+    });
+  </script>
+</body>
+</html>
