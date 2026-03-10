@@ -47,7 +47,7 @@
       margin-top: 1.5rem;
     }
 
-    .section-label:first-of-type { margin-top: 0; }
+    .section-label:first-child { margin-top: 0; }
 
     .controls-grid {
       display: grid;
@@ -353,6 +353,7 @@
       const dpr = window.devicePixelRatio || 1;
       const W = canvas.clientWidth;
       const H = canvas.clientHeight;
+      if (!W || !H) return;
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
@@ -426,8 +427,13 @@
     const playBtn = document.getElementById('play-btn');
 
     function triggerPlay() {
-      if (!audioCtx) audioCtx = new AudioContext();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
+      try {
+        if (!audioCtx) audioCtx = new AudioContext();
+      } catch (err) {
+        playBtn.textContent = '\u26A0 Audio unavailable';
+        return;
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
 
       // Stop any currently playing note immediately
       if (activeOsc) {
@@ -487,7 +493,7 @@
     playBtn.addEventListener('click', triggerPlay);
 
     document.addEventListener('keydown', e => {
-      if (e.code === 'Space' && e.target === document.body) {
+      if (e.code === 'Space' && e.target === document.body && !playBtn.disabled) {
         e.preventDefault();
         triggerPlay();
       }
